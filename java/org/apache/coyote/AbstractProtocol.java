@@ -575,9 +575,10 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         }
 
         String endpointName = getName();
+        //设置线程池前缀
         endpoint.setName(endpointName.substring(1, endpointName.length()-1));
         endpoint.setDomain(domain);
-
+        //调用endpoint的init方法
         endpoint.init();
     }
 
@@ -587,10 +588,11 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         if (getLog().isInfoEnabled()) {
             getLog().info(sm.getString("abstractProtocolHandler.start", getName()));
         }
-
+        //调用endpoint的start方法
         endpoint.start();
 
         // Start async timeout thread
+        // 创建一个异步超时线程
         asyncTimeout = new AsyncTimeout();
         Thread timeoutThread = new Thread(asyncTimeout, getNameInternal() + "-AsyncTimeout");
         int priority = endpoint.getThreadPriority();

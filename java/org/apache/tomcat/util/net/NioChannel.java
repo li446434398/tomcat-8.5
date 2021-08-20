@@ -147,6 +147,11 @@ public class NioChannel implements ByteChannel {
         return sc.read(dst);
     }
 
+
+    /**
+     * 获取socket中Attachment
+     * @return
+     */
     public Object getAttachment() {
         Poller pol = getPoller();
         Selector sel = pol!=null?pol.getSelector():null;

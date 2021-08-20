@@ -249,6 +249,7 @@ public final class Bootstrap {
 
 
     /**
+     * 创建Catalina对象，并设置ParentClassLoader
      * Initialize daemon.
      * @throws Exception Fatal initialization error
      */
@@ -460,6 +461,7 @@ public final class Bootstrap {
             // Don't set daemon until init() has completed
             Bootstrap bootstrap = new Bootstrap();
             try {
+                //创建Catalina
                 bootstrap.init();
             } catch (Throwable t) {
                 handleThrowable(t);
@@ -489,7 +491,10 @@ public final class Bootstrap {
                 daemon.stop();
             } else if (command.equals("start")) {
                 daemon.setAwait(true);
+                //反射调用Catalina的load方法
+                //Catalina的load方法中，解析server.xml并创建server并调用server的init方法
                 daemon.load(args);
+                //启动Catalina
                 daemon.start();
                 if (null == daemon.getServer()) {
                     System.exit(1);

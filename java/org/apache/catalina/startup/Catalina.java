@@ -543,6 +543,7 @@ public class Catalina {
         initNaming();
 
         // Create and execute our Digester
+        //创建Digester，并设置server等配置信息
         Digester digester = createStartDigester();
 
         InputSource inputSource = null;
@@ -636,6 +637,7 @@ public class Catalina {
 
         // Start the new server
         try {
+            //server初始化
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
@@ -671,7 +673,7 @@ public class Catalina {
      * Start a new server instance.
      */
     public void start() {
-
+        //如果server为空，解析server.xml创建server
         if (getServer() == null) {
             load();
         }
@@ -683,7 +685,7 @@ public class Catalina {
 
         long t1 = System.nanoTime();
 
-        // Start the new server
+        //启动Server
         try {
             getServer().start();
         } catch (LifecycleException e) {
@@ -701,7 +703,7 @@ public class Catalina {
             log.info("Server startup in " + ((t2 - t1) / 1000000) + " ms");
         }
 
-        // Register shutdown hook
+        //向JVM注册一个关闭钩子
         if (useShutdownHook) {
             if (shutdownHook == null) {
                 shutdownHook = new CatalinaShutdownHook();

@@ -49,7 +49,7 @@ public abstract class AbstractHttp11Protocol<S> extends AbstractProtocol<S> {
 
     private final CompressionConfig compressionConfig = new CompressionConfig();
 
-
+    //设置endpoint的Handler
     public AbstractHttp11Protocol(AbstractEndpoint<S> endpoint) {
         super(endpoint);
         setConnectionTimeout(Constants.DEFAULT_CONNECTION_TIMEOUT);

@@ -61,6 +61,7 @@ public class NioSelectorPool {
 
     protected Selector getSharedSelector() throws IOException {
         if (SHARED && SHARED_SELECTOR == null) {
+            //单例模式
             synchronized ( NioSelectorPool.class ) {
                 if ( SHARED_SELECTOR == null )  {
                     SHARED_SELECTOR = Selector.open();

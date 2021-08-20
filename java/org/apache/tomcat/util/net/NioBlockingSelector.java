@@ -237,6 +237,7 @@ public class NioBlockingSelector {
             }
         }
 
+
         public void add(final NioSocketWrapper key, final int ops, final KeyReference ref) {
             if ( key == null ) return;
             NioChannel nch = key.getSocket();
@@ -259,6 +260,7 @@ public class NioBlockingSelector {
             wakeup();
         }
 
+        //如果队列中有数据，遍历其中所有数据，并调用run方法，并且返回true
         public boolean events() {
             Runnable r = null;
 
@@ -291,6 +293,11 @@ public class NioBlockingSelector {
                     int keyCount = 0;
                     try {
                         int i = wakeupCounter.get();
+                        // select:阻塞到至少有一个通道准备就绪
+                        // select(timeout):最长阻塞timeout毫秒后返回
+                        // selectNow:非阻塞，只要有通道就绪就返回
+                        // 1.wakeupCounter > 0时，进行快速获取通道事件
+                        // 2.wakeupCounter < 0时，设置1s阻塞获取事件
                         if (i>0)
                             keyCount = selector.selectNow();
                         else {
@@ -320,13 +327,16 @@ public class NioBlockingSelector {
                     // any active event.
                     while (run && iterator != null && iterator.hasNext()) {
                         SelectionKey sk = iterator.next();
+                        //取出socket里面内容
                         NioSocketWrapper attachment = (NioSocketWrapper)sk.attachment();
                         try {
                             iterator.remove();
                             sk.interestOps(sk.interestOps() & (~sk.readyOps()));
+                            //处理读事件
                             if ( sk.isReadable() ) {
                                 countDown(attachment.getReadLatch());
                             }
+                            //处理写事件
                             if (sk.isWritable()) {
                                 countDown(attachment.getWriteLatch());
                             }

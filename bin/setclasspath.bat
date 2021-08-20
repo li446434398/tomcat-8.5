@@ -25,7 +25,7 @@ rem Make sure prerequisite environment variables are set
 rem In debug mode we need a real JDK (JAVA_HOME)
 if ""%1"" == ""debug"" goto needJavaHome
 
-rem Otherwise either JRE or JDK are fine
+rem 非debug模式，存在JAVA_HOME，跳转到gotJavaHome
 if not "%JRE_HOME%" == "" goto gotJreHome
 if not "%JAVA_HOME%" == "" goto gotJavaHome
 echo Neither the JAVA_HOME nor the JRE_HOME environment variable is defined
@@ -52,7 +52,7 @@ rem No JRE given, use JAVA_HOME as JRE_HOME
 set "JRE_HOME=%JAVA_HOME%"
 
 :gotJreHome
-rem Check if we have a usable JRE
+rem 如果不存在java.exe，跳转到noJreHome，否则跳转okJava，java.exe:Java解释器，直接从类文件执行Java应用程序代码
 if not exist "%JRE_HOME%\bin\java.exe" goto noJreHome
 goto okJava
 

@@ -108,7 +108,7 @@ rem ---------------------------------------------------------------------------
 
 setlocal
 
-rem Suppress Terminate batch job on CTRL+C
+rem 如果没有设置tomcat启动参数，跳转到mainEntry
 if not ""%1"" == ""run"" goto mainEntry
 if "%TEMP%" == "" goto mainEntry
 if exist "%TEMP%\%~nx0.run" goto mainEntry
@@ -123,10 +123,13 @@ exit /B %RETVAL%
 :mainEntry
 del /Q "%TEMP%\%~nx0.run" >NUL 2>&1
 
-rem Guess CATALINA_HOME if not defined
+rem 将当前目录设置到CURRENT_DIR变量中
 set "CURRENT_DIR=%cd%"
+rem 一般没有设置CATALINA_HOME
 if not "%CATALINA_HOME%" == "" goto gotHome
+rem 将CURRENT_DIR变量赋值给CATALINA_HOME
 set "CATALINA_HOME=%CURRENT_DIR%"
+rem 再次判断是否存在catalina.bat，存在跳转okHome
 if exist "%CATALINA_HOME%\bin\catalina.bat" goto okHome
 cd ..
 set "CATALINA_HOME=%cd%"
@@ -139,7 +142,7 @@ echo This environment variable is needed to run this program
 goto end
 :okHome
 
-rem Copy CATALINA_BASE from CATALINA_HOME if not defined
+rem 存在CATALINA_BASE环境变量，跳转到gotBase，否则将CATALINA_HOME赋值给CATALINA_BASE
 if not "%CATALINA_BASE%" == "" goto gotBase
 set "CATALINA_BASE=%CATALINA_HOME%"
 :gotBase
@@ -149,6 +152,7 @@ rem as this is used as the separator in the classpath and Java provides no
 rem mechanism for escaping if the same character appears in the path. Check this
 rem by replacing all occurrences of ';' with '' and checking that neither
 rem CATALINA_HOME nor CATALINA_BASE have changed
+rem 确保CATALINA_HOME，CATALINA_BASE不包含分号
 if "%CATALINA_HOME%" == "%CATALINA_HOME:;=%" goto homeNoSemicolon
 echo Using CATALINA_HOME:   "%CATALINA_HOME%"
 echo Unable to start as CATALINA_HOME contains a semicolon (;) character
@@ -165,7 +169,8 @@ rem Ensure that any user defined CLASSPATH variables are not used on startup,
 rem but allow them to be specified in setenv.bat, in rare case when it is needed.
 set CLASSPATH=
 
-rem Get standard environment variables
+rem setenv.bat中可以自定义环境变量
+rem 如果存在setenv.bat脚本，执行，否则跳转到checkSetenvHome
 if not exist "%CATALINA_BASE%\bin\setenv.bat" goto checkSetenvHome
 call "%CATALINA_BASE%\bin\setenv.bat"
 goto setenvDone
@@ -173,7 +178,7 @@ goto setenvDone
 if exist "%CATALINA_HOME%\bin\setenv.bat" call "%CATALINA_HOME%\bin\setenv.bat"
 :setenvDone
 
-rem Get standard Java environment variables
+rem 获取java环境变量，在setclasspath.bat脚本中
 if exist "%CATALINA_HOME%\bin\setclasspath.bat" goto okSetclasspath
 echo Cannot find "%CATALINA_HOME%\bin\setclasspath.bat"
 echo This file is needed to run this program
@@ -188,8 +193,10 @@ rem quotes into the CLASSPATH
 if "%CLASSPATH%" == "" goto emptyClasspath
 set "CLASSPATH=%CLASSPATH%;"
 :emptyClasspath
+rem 将tomcat中bootstrap.jar加入到CLASSPATH中
 set "CLASSPATH=%CLASSPATH%%CATALINA_HOME%\bin\bootstrap.jar"
 
+rem 在tomcat目录下创建temp文件夹
 if not "%CATALINA_TMPDIR%" == "" goto gotTmpdir
 set "CATALINA_TMPDIR=%CATALINA_BASE%\temp"
 :gotTmpdir
@@ -197,6 +204,7 @@ set "CATALINA_TMPDIR=%CATALINA_BASE%\temp"
 rem Add tomcat-juli.jar to classpath
 rem tomcat-juli.jar can be over-ridden per instance
 if not exist "%CATALINA_BASE%\bin\tomcat-juli.jar" goto juliClasspathHome
+rem 将tomcat中tomcat-juli.jar加入到CLASSPATH中
 set "CLASSPATH=%CLASSPATH%;%CATALINA_BASE%\bin\tomcat-juli.jar"
 goto juliClasspathDone
 :juliClasspathHome
@@ -212,6 +220,7 @@ rem Register custom URL handlers
 rem Do this here so custom URL handles (specifically 'war:...') can be used in the security policy
 set "JAVA_OPTS=%JAVA_OPTS% -Djava.protocol.handler.pkgs=org.apache.catalina.webresources"
 
+rem 设置日志配置
 if not "%LOGGING_CONFIG%" == "" goto noJuliConfig
 set LOGGING_CONFIG=-Dnop
 if not exist "%CATALINA_BASE%\conf\logging.properties" goto noJuliConfig
@@ -253,7 +262,9 @@ echo Using JAVA_HOME:       "%JAVA_HOME%"
 :java_dir_displayed
 echo Using CLASSPATH:       "%CLASSPATH%"
 
+rem  setclasspath.bat中获取_RUNJAVA="%JRE_HOME%\bin\java.exe"
 set _EXECJAVA=%_RUNJAVA%
+rem tomcat的启动引导程序
 set MAINCLASS=org.apache.catalina.startup.Bootstrap
 set ACTION=start
 set SECURITY_POLICY_FILE=
@@ -316,6 +327,7 @@ echo Using Security Manager
 set "SECURITY_POLICY_FILE=%CATALINA_BASE%\conf\catalina.policy"
 goto execCmd
 
+rem tomcat已start启动
 :doStart
 shift
 if "%TITLE%" == "" set TITLE=Tomcat
@@ -344,7 +356,7 @@ goto end
 
 
 :execCmd
-rem Get remaining unshifted command line arguments and save them in the
+rem 拼接参数
 set CMD_LINE_ARGS=
 :setArgs
 if ""%1""=="""" goto doneSetArgs
@@ -356,6 +368,10 @@ goto setArgs
 rem Execute Java with the applicable properties
 if not "%JPDA%" == "" goto doJpda
 if not "%SECURITY_POLICY_FILE%" == "" goto doSecurity
+rem %_EXECJAVA% =  -classpath "%CLASSPATH%" -Dcatalina.base="%CATALINA_BASE%" -Dcatalina.home="%CATALINA_HOME%"  -Djava.io.tmpdir="%CATALINA_TMPDIR%"%MAINCLASS% %ACTION%
+rem start Tomcat D:\jdk\bin\java.exe  -classpath "%CLASSPATH%" org.apache.catalina.startup.Bootstrap start
+rem 在classpath中，tomcat将bin下bootstrap.jar，tomcat-juli.jar,加入到了classpath中
+rem org.apache.catalina.startup.Bootstrap main方法中，参数为start
 %_EXECJAVA% %LOGGING_CONFIG% %LOGGING_MANAGER% %JAVA_OPTS% %CATALINA_OPTS% %DEBUG_OPTS% -D%ENDORSED_PROP%="%JAVA_ENDORSED_DIRS%" -classpath "%CLASSPATH%" -Dcatalina.base="%CATALINA_BASE%" -Dcatalina.home="%CATALINA_HOME%" -Djava.io.tmpdir="%CATALINA_TMPDIR%" %MAINCLASS% %CMD_LINE_ARGS% %ACTION%
 goto end
 :doSecurity

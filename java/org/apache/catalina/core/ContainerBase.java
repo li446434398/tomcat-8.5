@@ -929,6 +929,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start our child containers, if any
+        //使用线程池来启动子容器
         Container children[] = findChildren();
         List<Future<Void>> results = new ArrayList<>();
         for (int i = 0; i < children.length; i++) {

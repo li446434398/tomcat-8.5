@@ -61,6 +61,10 @@ public abstract class AbstractEndpoint<S> {
 
     protected static final StringManager sm = StringManager.getManager(AbstractEndpoint.class);
 
+    /**
+     * 处理socket的方法定义
+     * @param <S>
+     */
     public static interface Handler<S> {
 
         /**
@@ -167,6 +171,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Are we using an internal executor
+     * 是否使用内部连接池
      */
     protected volatile boolean internalExecutor = true;
 
@@ -434,7 +439,9 @@ public abstract class AbstractEndpoint<S> {
     }
     public int getAcceptorThreadPriority() { return acceptorThreadPriority; }
 
-
+    /**
+     * 初始化LimitLatch，默认maxConnections=10000
+     */
     private int maxConnections = 10000;
     public void setMaxConnections(int maxCon) {
         this.maxConnections = maxCon;
@@ -477,6 +484,8 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * External Executor based thread pool.
+     * 设置线程池，可外部传入
+     * @see  AbstractEndpoint#setMaxThreads
      */
     private Executor executor = null;
     public void setExecutor(Executor executor) {
@@ -534,6 +543,8 @@ public abstract class AbstractEndpoint<S> {
      * Allows the server developer to specify the acceptCount (backlog) that
      * should be used for server sockets. By default, this value
      * is 100.
+     * 设置acceptCount，默认100，该值时控制socket的ACCEPT(全连接队列)的队列长度，由Acceptor消费
+     *
      */
     private int acceptCount = 100;
     public void setAcceptCount(int acceptCount) { if (acceptCount > 0) this.acceptCount = acceptCount; }
@@ -652,6 +663,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Maximum amount of worker threads.
+     * 当使用内部线程池时,可用设置maxThreads
      */
     private int maxThreads = 200;
     public void setMaxThreads(int maxThreads) {
@@ -665,6 +677,11 @@ public abstract class AbstractEndpoint<S> {
             ((java.util.concurrent.ThreadPoolExecutor) executor).setMaximumPoolSize(maxThreads);
         }
     }
+
+    /**
+     * 返回内部线程池最大大小
+     * @return
+     */
     public int getMaxThreads() {
         if (internalExecutor) {
             return maxThreads;
@@ -693,6 +710,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Max keep alive requests
+     * 最大活跃连接请求数，默认100
      */
     private int maxKeepAliveRequests=100; // as in Apache HTTPD server
     public int getMaxKeepAliveRequests() {
@@ -875,7 +893,14 @@ public abstract class AbstractEndpoint<S> {
         return paused;
     }
 
-
+    /**
+     * 创建tomcat的工作线程
+     * corePoolSize: 10
+     * maximumPoolSize: 200
+     * keepAliveTime: 60s
+     * workQueue: TaskQueue:先进先出，无界阻塞队列
+     * threadName: 协议-IO模型-端口-exec-数字
+     */
     public void createExecutor() {
         internalExecutor = true;
         TaskQueue taskqueue = new TaskQueue();
@@ -884,13 +909,18 @@ public abstract class AbstractEndpoint<S> {
         taskqueue.setParent( (ThreadPoolExecutor) executor);
     }
 
+    /**
+     * 关闭线程池
+     */
     public void shutdownExecutor() {
         Executor executor = this.executor;
+        //关闭内部线程池且线程池不为null
         if (executor != null && internalExecutor) {
             this.executor = null;
             if (executor instanceof ThreadPoolExecutor) {
                 //this is our internal one, so we need to shut it down
                 ThreadPoolExecutor tpe = (ThreadPoolExecutor) executor;
+                //等待5秒(默认)后关闭线程池
                 tpe.shutdownNow();
                 long timeout = getExecutorTerminationTimeoutMillis();
                 if (timeout > 0) {
@@ -1049,6 +1079,7 @@ public abstract class AbstractEndpoint<S> {
      *                          container thread
      *
      * @return if processing was triggered successfully
+     *
      */
     public boolean processSocket(SocketWrapperBase<S> socketWrapper,
             SocketEvent event, boolean dispatch) {
@@ -1056,12 +1087,14 @@ public abstract class AbstractEndpoint<S> {
             if (socketWrapper == null) {
                 return false;
             }
+            //从对象缓冲池中获取SocketProcessorBase
             SocketProcessorBase<S> sc = processorCache.pop();
             if (sc == null) {
                 sc = createSocketProcessor(socketWrapper, event);
             } else {
                 sc.reset(socketWrapper, event);
             }
+            //判断SocketProcessorBase是线程池执行还是单独线程执行
             Executor executor = getExecutor();
             if (dispatch && executor != null) {
                 executor.execute(sc);
@@ -1100,11 +1133,16 @@ public abstract class AbstractEndpoint<S> {
     public abstract void startInternal() throws Exception;
     public abstract void stopInternal() throws Exception;
 
+    /**
+     * EndPoint初始化
+     * @throws Exception
+     */
     public void init() throws Exception {
         if (bindOnInit) {
             bind();
             bindState = BindState.BOUND_ON_INIT;
         }
+        // JMX相关
         if (this.domain != null) {
             // Register endpoint (as ThreadPool - historical name)
             oname = new ObjectName(domain + ":type=ThreadPool,name=\"" + getName() + "\"");
@@ -1172,7 +1210,10 @@ public abstract class AbstractEndpoint<S> {
         }
     }
 
-
+    /**
+     * EndPoint启动
+     * @throws Exception
+     */
     public final void start() throws Exception {
         if (bindState == BindState.UNBOUND) {
             bind();
@@ -1249,6 +1290,10 @@ public abstract class AbstractEndpoint<S> {
 
     protected abstract Log getLog();
 
+    /**
+     * 初始化LimitLatch
+     * @return
+     */
     protected LimitLatch initializeConnectionLatch() {
         if (maxConnections==-1) return null;
         if (connectionLimitLatch==null) {

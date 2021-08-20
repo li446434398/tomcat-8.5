@@ -40,6 +40,8 @@ public class LimitLatch {
 
         @Override
         protected int tryAcquireShared(int ignored) {
+            //如果当前连接数小于limit，返回1，正常通过
+            //如果当前连接数大于limit，返回-1.进入队列排队
             long newCount = count.incrementAndGet();
             if (!released && newCount > limit) {
                 // Limit exceeded
